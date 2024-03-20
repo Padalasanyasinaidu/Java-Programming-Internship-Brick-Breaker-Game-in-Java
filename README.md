@@ -1,0 +1,192 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+
+public class BrickBreakerGame extends JPanel implements KeyListener {
+    private static final int WIDTH = 800;
+    private static final int HEIGHT = 600;
+    private static final int PADDLE_WIDTH = 100;
+    private static final int PADDLE_HEIGHT = 20;
+    private static final int BALL_SIZE = 20;
+    private static final int BRICK_WIDTH = 60;
+    private static final int BRICK_HEIGHT = 30;
+    private static final int NUM_BRICKS_PER_ROW = 10;
+    private static final int NUM_ROWS = 5;
+    private static final int DELAY = 10;
+    
+    private int paddleX = WIDTH / 2 - PADDLE_WIDTH / 2;
+    private int ballX = WIDTH / 2 - BALL_SIZE / 2;
+    private int ballY = HEIGHT - PADDLE_HEIGHT - BALL_SIZE;
+    private int ballXSpeed = 1;
+    private int ballYSpeed = -1;
+    private boolean leftPressed = false;
+    private boolean rightPressed = false;
+    private boolean gameRunning = true;
+    private int score = 0;
+    private int bricksDestroyed = 0;
+    private boolean[][] bricks = new boolean[NUM_ROWS][NUM_BRICKS_PER_ROW];
+
+    public BrickBreakerGame() {
+        setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        setBackground(Color.BLACK);
+        addKeyListener(this);
+        setFocusable(true);
+        initBricks();
+        Timer timer = new Timer(DELAY, new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                if (gameRunning) {
+                    moveBall();
+                    checkCollisions();
+                    repaint();
+                }
+            }
+        });
+        timer.start();
+    }
+
+    private void initBricks() {
+        for (int i = 0; i < NUM_ROWS; i++) {
+            for (int j = 0; j < NUM_BRICKS_PER_ROW; j++) {
+                bricks[i][j] = true;
+            }
+        }
+    }
+
+    private void moveBall() {
+        ballX += ballXSpeed;
+        ballY += ballYSpeed;
+        if (ballX <= 0 || ballX + BALL_SIZE >= WIDTH) {
+            ballXSpeed = -ballXSpeed;
+        }
+        if (ballY <= 0) {
+            ballYSpeed = -ballYSpeed;
+        }
+        if (ballY + BALL_SIZE >= HEIGHT) {
+            gameRunning = false;
+        }
+    }
+
+    private void checkCollisions() {
+        Rectangle ballRect = new Rectangle(ballX, ballY, BALL_SIZE, BALL_SIZE);
+        Rectangle paddleRect = new Rectangle(paddleX, HEIGHT - PADDLE_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT);
+        if (ballRect.intersects(paddleRect)) {
+            ballYSpeed = -ballYSpeed;
+        }
+        for (int i = 0; i < NUM_ROWS; i++) {
+            for (int j = 0; j < NUM_BRICKS_PER_ROW; j++) {
+                if (bricks[i][j]) {
+                    int brickX = j * BRICK_WIDTH;
+                    int brickY = i * BRICK_HEIGHT;
+                    Rectangle brickRect = new Rectangle(brickX, brickY, BRICK_WIDTH, BRICK_HEIGHT);
+                    if (ballRect.intersects(brickRect)) {
+                        bricks[i][j] = false;
+                        ballYSpeed = -ballYSpeed;
+                        score += 10;
+                        bricksDestroyed++;
+                        if (bricksDestroyed == NUM_ROWS * NUM_BRICKS_PER_ROW) {
+                            gameRunning = false; // Game won condition
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        drawPaddle(g);
+        drawBall(g);
+        drawBricks(g);
+        drawScore(g);
+        if (!gameRunning) {
+            drawGameOver(g);
+        }
+    }
+
+    private void drawPaddle(Graphics g) {
+        g.setColor(Color.WHITE);
+        g.fillRect(paddleX, HEIGHT - PADDLE_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT);
+    }
+
+    private void drawBall(Graphics g) {
+        g.setColor(Color.RED);
+        g.fillOval(ballX, ballY, BALL_SIZE, BALL_SIZE);
+    }
+
+    private void drawBricks(Graphics g) {
+        for (int i = 0; i < NUM_ROWS; i++) {
+            for (int j = 0; j < NUM_BRICKS_PER_ROW; j++) {
+                if (bricks[i][j]) {
+                    int brickX = j * BRICK_WIDTH;
+                    int brickY = i * BRICK_HEIGHT;
+                    g.setColor(Color.BLUE);
+                    g.fillRect(brickX, brickY, BRICK_WIDTH, BRICK_HEIGHT);
+                }
+            }
+        }
+    }
+
+    private void drawScore(Graphics g) {
+        g.setColor(Color.WHITE);
+        g.drawString("Score: " + score, 10, 20);
+    }
+
+    private void drawGameOver(Graphics g) {
+        g.setColor(Color.WHITE);
+        g.drawString("Game Over! Your score: " + score, WIDTH / 2 - 100, HEIGHT / 2);
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+            leftPressed = true;
+        }
+        if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+            rightPressed = true;
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+        if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+            leftPressed = false;
+        }
+        if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+            rightPressed = false;
+        }
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+    }
+
+    public void movePaddle() {
+        if (leftPressed && paddleX > 0) {
+            paddleX -= 5;
+        }
+        if (rightPressed && paddleX < WIDTH - PADDLE_WIDTH) {
+            paddleX += 5;
+        }
+    }
+
+    public static void main(String[] args) {
+        JFrame frame = new JFrame("Brick Breaker");
+        BrickBreakerGame game = new BrickBreakerGame();
+        frame.add(game);
+        frame.pack();
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+
+        while (true) {
+            game.movePaddle();
+            game.repaint();
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
